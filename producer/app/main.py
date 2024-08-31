@@ -10,11 +10,15 @@ redis = get_redis_connection(url=REDIS_DATA_URL , decode_responses=True)
 
 @asynccontextmanager
 async def check_database_is_up(app: FastAPI):
-    try :
+    try:
         Product.Meta.database = redis
-    except : 
-        raise ConnectionError("Can NOT connect to the DataBase !")
-    yield
+        if await redis.ping():
+            yield
+        else:
+            raise ConnectionError("Unable to ping the Redis database!")
+    except Exception as e:
+        raise ConnectionError(f"Cannot connect to the database! Error: {e}")
+
     
 
 app = FastAPI(lifespan=check_database_is_up)
