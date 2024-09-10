@@ -1,11 +1,11 @@
 from fastapi import APIRouter , HTTPException , status
-from ..schema.product import Product , Product_OUT
+from ..schema.product import Product  , ProductSchema
 from aredis_om import NotFoundError
 
 product_router = APIRouter()
 
 
-@product_router.get('/read_product/{proID}', response_model=Product_OUT ,status_code=status.HTTP_200_OK)
+@product_router.get('/read_product/{proID}', response_model=ProductSchema ,status_code=status.HTTP_200_OK)
 async def API_read_product(proID: str):
     try:
         product_info = await Product.get(proID)
@@ -15,16 +15,17 @@ async def API_read_product(proID: str):
 
 
 @product_router.post('/create_product', status_code=status.HTTP_201_CREATED) 
-async def API_save_product(product: Product):
-    await product.save()
-    return {"message":f"product created successfully  , proID : {product.pk}"}
+async def API_save_product(product: ProductSchema):
+    new_product = Product(**product.model_dump())
+    await new_product.save()
+    return {"message":"product created successfully", "proID" :f"{new_product.pk}"}
 
 
 @product_router.put('/update_product/{proID}', status_code=status.HTTP_200_OK)
-async def API_update_product(product: Product , proID: str):
+async def API_update_product(product: ProductSchema , proID: str):
     try: 
         product_info = await Product.get(proID)
-        await product_info.update(**product.model_dump(exclude='pk'))
+        await product_info.update(**product.model_dump())
     except NotFoundError:
         raise HTTPException(detail="product NOT found", status_code=status.HTTP_404_NOT_FOUND)
     except Exception :
@@ -39,4 +40,4 @@ async def API_delete_product(proID: str):
         await product_info.delete(pk=proID)
     except NotFoundError:
         raise HTTPException(detail="product NOT found", status_code=status.HTTP_404_NOT_FOUND)
-    return {"message":"product deleted successfully" }
+    return {"message":"product deleted successfully"}
