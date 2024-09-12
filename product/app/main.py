@@ -1,12 +1,12 @@
+import asyncio
 from fastapi import FastAPI 
+from aio_pika.exceptions import AMQPConnectionError
 from contextlib import asynccontextmanager
 from aredis_om import get_redis_connection
 from ..router.product import product_router
 from ..schema.product import Product
 from .config import Evariable
 from .consumer import consumer
-from aio_pika.exceptions import AMQPConnectionError
-import asyncio
 
 REDIS_DATA_URL = f"redis://{Evariable.redis_username}:{Evariable.redis_password}@{Evariable.redis_host}:{Evariable.redis_port}/{Evariable.redis_database}"
 redis = get_redis_connection(url=REDIS_DATA_URL , decode_responses=True)
@@ -28,9 +28,6 @@ async def check_database_is_up(app: FastAPI):
 
         if not await redis.ping() :
             raise ConnectionError("Unable to ping the Redis database!") # If Redis is reachable, continue with FastAPI app startup
-        
-        elif not asyncio.create_task(consumer()) : 
-            raise AMQPConnectionError('Failed to connect to RabbitMQ')
         
         else:
             yield # If Redis and RabbitMQ is reachable, continue with FastAPI app startup

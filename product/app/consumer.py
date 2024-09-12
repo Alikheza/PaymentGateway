@@ -3,10 +3,17 @@ from aio_pika import Message, connect
 from aio_pika.abc import AbstractIncomingMessage
 from aredis_om import NotFoundError
 from product.schema.product import Product
+from .config import Evariable
 
 async def consumer() -> None:
+    """
+    RabbitMQ consumer that listens to the 'read' queue for messages regarding product actions
+    (read or subtract inventory) and responds with the requested information or performs
+    inventory updates.
 
-    connection = await connect("amqp://guest:guest@localhost/")
+    It handles responses asynchronously and sends a message back to the reply queue.
+    """
+    connection = await connect(f"amqp://{Evariable.RabbitMQ_user}:{Evariable.RabbitMQ_password}@{Evariable.RabbitMQ_host}:{Evariable.RabbitMQ_port}/")
     channel = await connection.channel()
     exchange = channel.default_exchange
     queue = await channel.declare_queue("read")
@@ -33,7 +40,16 @@ async def consumer() -> None:
 
 
 async def on_response (value: str) -> dict|str:
+    """
+    Handles the incoming message and performs actions such as reading product info or
+    subtracting product inventory.
 
+    Args:
+        value (str): JSON string containing the method (read or subtract) and product ID.
+
+    Returns:
+        dict | str: The result of the requested action or an error message.
+    """
     value=json.loads(value)
 
     try :

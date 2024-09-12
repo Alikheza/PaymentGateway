@@ -1,11 +1,17 @@
 import asyncio
 import json
-from typing import MutableMapping
-from aio_pika import Message, connect
-from aio_pika.abc import (AbstractChannel, AbstractConnection, AbstractIncomingMessage, AbstractQueue,)
 import uuid    
+from typing import MutableMapping
+from .config import Evariable
+from aio_pika import Message, connect
+from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractIncomingMessage, AbstractQueue
 
 class Publisher:
+
+    """
+    A Publisher class to send and receive messages via RabbitMQ using aio-pika.
+    This class handles request/response communication with the message queue.
+    """
 
     connection: AbstractConnection
     channel: AbstractChannel
@@ -18,16 +24,29 @@ class Publisher:
 
 
     async def connect(self) -> "Publisher":
+        """
+        Connects to the RabbitMQ server and sets up the callback queue for responses.
 
-        self.connection = await connect("amqp://guest:guest@localhost/")
+        Returns:
+            Publisher: The instance of the Publisher after connection is established.
+        """
+        self.connection = await connect(f"amqp://{Evariable.RabbitMQ_user}:{Evariable.RabbitMQ_password}@{Evariable.RabbitMQ_host}:{Evariable.RabbitMQ_port}/")
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
         await self.callback_queue.consume(self.on_response, no_ack=True)
         return self
 
 
-    async def on_response(self, message: AbstractIncomingMessage) -> None:
+    async def on_response(self, message: AbstractIncomingMessage) -> str|None:
+        """
+        Callback function that processes incoming responses to published messages.
 
+        Args:
+            message (AbstractIncomingMessage): The incoming message from RabbitMQ.
+
+        Returns:
+            str | None: The decoded response body, or None if no correlation ID exists.
+        """
         if message.correlation_id is None:
             return 
         
@@ -38,7 +57,19 @@ class Publisher:
             future.cancel()
 
     async def call(self, value: dict) -> dict|None :
+        """
+        Sends a message to RabbitMQ and waits for a response.
 
+        Args:
+            value (dict): The data to be sent in the message.
+
+        Returns:
+            dict | None: The response data if available, or None if no valid response is returned.
+        
+        Raises:
+            asyncio.TimeoutError: If the request times out.
+            ValueError: If the product is not found.
+        """
         correlation_id = str(uuid.uuid4())
         loop = asyncio.get_running_loop()
         future = loop.create_future()
@@ -51,18 +82,44 @@ class Publisher:
             routing_key="read")
         
         
-        if future.cancelled() != True :
-            return await future
-        else :
-            return None
+        try:
+            response = await asyncio.wait_for(future, 10)
+        except asyncio.TimeoutError:
+            del self.futures[correlation_id]  # Remove the future if it times out
+            raise asyncio.TimeoutError
+        except asyncio.CancelledError:
+            raise ValueError
+        return response
+        
+    async def close_connection(self) ->None :
+
+        # await self.connection.close()
+        pass
+
 
 
 publisher: Publisher = None
 
 async def message_to_inventory(value: dict) -> dict:
+
+    """
+    Communicates with the inventory system to either read product information or subtract inventory.
+
+    Args:
+        value (dict): The data containing the method (read/subtract) and product details.
+
+    Returns:
+        dict: The product details or confirmation of inventory subtraction.
+
+    Raises:
+        Exception: If something goes wrong during the subtract operation.
+        ValueError: If the product is not found.
+        TimeoutError: If the request to the inventory system times out.
+    """
+
     global publisher
 
-    if publisher is None :
+    if publisher is None or publisher.connection.is_closed==True :
         publisher = await Publisher().connect()
 
     match value["method"]:
@@ -75,9 +132,13 @@ async def message_to_inventory(value: dict) -> dict:
             return response 
             
         case "read":
-            response = await publisher.call(value)
-            if response is None :
+            try :
+                response = await publisher.call(value)
+
+            except ValueError :
                 raise ValueError('product NOT found')
             
+            except TimeoutError:
+                raise TimeoutError('The request is taking longer than expected to complete.')
+            
             return json.loads(response)
-

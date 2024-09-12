@@ -7,6 +7,18 @@ product_router = APIRouter()
 
 @product_router.get('/read_product/{proID}', response_model=ProductSchema ,status_code=status.HTTP_200_OK)
 async def API_read_product(proID: str):
+    """
+    Fetch product details by product ID.
+
+    Args:
+        proID (str): The unique identifier of the product to retrieve.
+
+    Returns:
+        ProductSchema: The product data if found.
+
+    Raises:
+        HTTPException: If the product is not found (404 Not Found).
+    """
     try:
         product_info = await Product.get(proID)
     except NotFoundError:
@@ -16,6 +28,15 @@ async def API_read_product(proID: str):
 
 @product_router.post('/create_product', status_code=status.HTTP_201_CREATED) 
 async def API_save_product(product: ProductSchema):
+    """
+    Create a new product.
+
+    Args:
+        product (ProductSchema): The product data to be saved.
+
+    Returns:
+        dict: A success message and the newly created product ID.
+    """
     new_product = Product(**product.model_dump())
     await new_product.save()
     return {"message":"product created successfully", "proID" :f"{new_product.pk}"}
@@ -23,6 +44,21 @@ async def API_save_product(product: ProductSchema):
 
 @product_router.put('/update_product/{proID}', status_code=status.HTTP_200_OK)
 async def API_update_product(product: ProductSchema , proID: str):
+    """
+    Update product details by product ID.
+
+    Args:
+        product (ProductSchema): The new product data to update.
+        proID (str): The unique identifier of the product to update.
+
+    Returns:
+        dict: A success message if the product is updated.
+
+    Raises:
+        HTTPException: 
+            - If the product is not found (404 Not Found).
+            - If an error occurs during the update process (400 Bad Request).
+    """
     try: 
         product_info = await Product.get(proID)
         await product_info.update(**product.model_dump())
@@ -35,6 +71,18 @@ async def API_update_product(product: ProductSchema , proID: str):
 
 @product_router.delete('/delete_product/{proID}', status_code=status.HTTP_200_OK)
 async def API_delete_product(proID: str):
+    """
+    Delete a product by product ID.
+
+    Args:
+        proID (str): The unique identifier of the product to delete.
+
+    Returns:
+        dict: A success message if the product is deleted.
+
+    Raises:
+        HTTPException: If the product is not found (404 Not Found).
+    """
     try:
         product_info = await Product.get(proID)
         await product_info.delete(pk=proID)

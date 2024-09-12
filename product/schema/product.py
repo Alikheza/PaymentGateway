@@ -9,7 +9,6 @@ class ProductSchema(BaseModel):
     Product_Info: str
     Product_Inventory: int
     Product_Price: float
-    num_of_order : int = 0
 
     class Config:
         extra='ignore'
