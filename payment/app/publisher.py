@@ -93,9 +93,7 @@ class Publisher:
         
     async def close_connection(self) ->None :
 
-        # await self.connection.close()
-        pass
-
+        await self.connection.close()
 
 
 publisher: Publisher = None

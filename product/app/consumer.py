@@ -5,6 +5,15 @@ from aredis_om import NotFoundError
 from product.schema.product import Product
 from .config import Evariable
 
+async def connect_consumer() :
+
+    connection = await connect(f"amqp://{Evariable.RabbitMQ_user}:{Evariable.RabbitMQ_password}@{Evariable.RabbitMQ_host}:{Evariable.RabbitMQ_port}/")
+    # channel = await connection.channel()    
+    return connection
+
+
+
+
 async def consumer() -> None:
     """
     RabbitMQ consumer that listens to the 'read' queue for messages regarding product actions
@@ -13,7 +22,7 @@ async def consumer() -> None:
 
     It handles responses asynchronously and sends a message back to the reply queue.
     """
-    connection = await connect(f"amqp://{Evariable.RabbitMQ_user}:{Evariable.RabbitMQ_password}@{Evariable.RabbitMQ_host}:{Evariable.RabbitMQ_port}/")
+    connection = await connect_consumer()
     channel = await connection.channel()
     exchange = channel.default_exchange
     queue = await channel.declare_queue("read")

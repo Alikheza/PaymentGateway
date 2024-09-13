@@ -79,6 +79,6 @@ async def API_check_order(order_id:str ):
     try:
         order = await Payment.get(order_id)
     except NotFoundError:
-        raise HTTPException(detail="product NOT found", status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(detail="order NOT found", status_code=status.HTTP_404_NOT_FOUND)
     
     return {"message" : order.status}
