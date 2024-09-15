@@ -1,5 +1,7 @@
 import asyncio
-from fastapi import FastAPI 
+import logging
+from fastapi import FastAPI , HTTPException
+from fastapi.exception_handlers import http_exception_handler
 from aio_pika.exceptions import AMQPConnectionError
 from contextlib import asynccontextmanager
 from aredis_om import get_redis_connection
@@ -7,9 +9,14 @@ from ..router.product import product_router
 from ..schema.product import Product
 from .config import Evariable
 from .consumer import consumer , connect_consumer
+from .logging_config import configure_logging
+
 
 REDIS_DATA_URL = f"redis://{Evariable.redis_username}:{Evariable.redis_password}@{Evariable.redis_host}:{Evariable.redis_port}/{Evariable.redis_database}"
 redis = get_redis_connection(url=REDIS_DATA_URL , decode_responses=True)
+
+logger = logging.getLogger(__name__)
+logger_error = logging.getLogger('error_logger')
 
 @asynccontextmanager
 async def check_database_is_up(app: FastAPI):
@@ -21,9 +28,10 @@ async def check_database_is_up(app: FastAPI):
 
     """
     try:
+        configure_logging()
 
         Product.Meta.database = redis
-        
+
         await connect_consumer()
         
         asyncio.create_task(consumer())
@@ -36,10 +44,11 @@ async def check_database_is_up(app: FastAPI):
         
         
     except AMQPConnectionError as amqp_error:
-        print(f"Failed to connect to RabbitMQ: {amqp_error}")
+        logger_error.critical(f"Failed to connect to RabbitMQ: {amqp_error}")
         raise SystemExit("Shutting down due to RabbitMQ connection failure.")
     
     except ConnectionError as redis_error:
+        logger_error.critical(f"Failed to connect to Redis: {redis_error}")
         raise SystemExit(f"Cannot connect to the Redis database! Error: {redis_error}")
 
 
@@ -48,3 +57,7 @@ app = FastAPI(lifespan=check_database_is_up )
 app.include_router(product_router , prefix="/v1" ,tags=['Product'])
 
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler_logging(request , exc):
+    logger_error.error(f"HTTPException:  {exc.detail}|{exc.status_code}")
+    return await http_exception_handler(request, exc)

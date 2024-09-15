@@ -1,0 +1,6 @@
+fastapi 
+uvicorn[standard]
+pydantic
+pydantic_settings
+aredis_om
+aio_pika

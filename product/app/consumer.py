@@ -1,9 +1,14 @@
+import logging
 import json
 from aio_pika import Message, connect
 from aio_pika.abc import AbstractIncomingMessage
 from aredis_om import NotFoundError
 from product.schema.product import Product
 from .config import Evariable
+
+logger = logging.getLogger('consumer_logger')
+logger_error = logging.getLogger('error_logger')
+
 
 async def connect_consumer() :
 
@@ -35,20 +40,24 @@ async def consumer() -> None:
 
             try:
                 async with message.process(requeue=False):
-            
+                    logger.info(f"Message received | correlation_id : {message.correlation_id}")
+                    
                     assert message.reply_to is not None
                     assert message.body is not None
                     
-                    response = await on_response(message.body.decode())
+                    response = await on_response(message.body.decode() ,message.correlation_id)
+                    logger.info(f"The message was processed | correlation_id : {message.correlation_id}")
+                    
                     await exchange.publish(
                         Message(body=response.encode(),correlation_id=message.correlation_id,)
                         ,routing_key=message.reply_to)
+                    logger.info(f"The message was sent to the PaymentGateway | correlation_id : {message.correlation_id}")
 
             except Exception as E:
-                print(f'something went wrong  {E}')
+                logger_error.critical(f'something went wrong in message broker!!   {E}')
 
 
-async def on_response (value: str) -> dict|str:
+async def on_response (value: str ,correlation_id: str ) -> dict|str:
     """
     Handles the incoming message and performs actions such as reading product info or
     subtracting product inventory.
@@ -71,11 +80,16 @@ async def on_response (value: str) -> dict|str:
         case "subtract":
             try:
                 total = product_info.Product_Inventory - value["Quantity"]
-                await product_info.update(Product_Inventory = total) 
+                await product_info.update(Product_Inventory = total)
+
+                logger.info(f"The product inventory updated | product_id : {product_info.pk} | Quantity : {value["Quantity"]} | correlation_id : {correlation_id}")
+
                 return "The product update was successful"
             
             except Exception as E: 
+                logger_error.critical(f'something went wrong in message broker!! | Error: {E}')
                 raise Exception(f"something went wrong  {E}")
 
         case "read":
+            logger.info(f"product info read | product_id : {product_info.pk} | correlation_id : {correlation_id}")
             return json.dumps(product_info.model_dump())

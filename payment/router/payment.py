@@ -1,5 +1,5 @@
 import datetime
-import asyncio
+import logging
 from fastapi import APIRouter , HTTPException , status , BackgroundTasks
 from aredis_om import NotFoundError
 from ..schema.payment import Order , Payment
@@ -8,6 +8,7 @@ from ..app.payment_gateway import process_payment
 
 payment_router = APIRouter()
 
+logger = logging.getLogger(__name__)
 
 @payment_router.post('/orders/' ,status_code=status.HTTP_201_CREATED )
 async def API_order_product(order:Order , background_tasks: BackgroundTasks):
@@ -29,7 +30,7 @@ async def API_order_product(order:Order , background_tasks: BackgroundTasks):
             - 408 REQUEST TIMEOUT: If the request to inventory takes too long.
     """
     try:
-
+        logger.info(f"Received order request: {order}")
         inventory_response = await message_to_inventory({
             "method": "read",
             "product_id": order.Product_id})
@@ -55,7 +56,10 @@ async def API_order_product(order:Order , background_tasks: BackgroundTasks):
     new_payment =  Payment(**payment_data)
     await new_payment.save()
 
-    background_tasks.add_task(process_payment , new_payment)
+    logger.info(f"Order processed successfully. Payment ID: {new_payment.pk}")
+    background_tasks.add_task(process_payment, new_payment)
+    logger.info(f"Payment processing for Payment ID: {new_payment.pk} added to background tasks.")
+
 
     return {"message": "Order processed" , "order_id" : new_payment.pk}
 
@@ -77,6 +81,7 @@ async def API_check_order(order_id:str ):
     """
     
     try:
+        logger.info(f"Order status checked for Order ID: {order_id}.")
         order = await Payment.get(order_id)
     except NotFoundError:
         raise HTTPException(detail="order NOT found", status_code=status.HTTP_404_NOT_FOUND)

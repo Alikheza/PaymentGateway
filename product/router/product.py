@@ -1,6 +1,10 @@
+import logging
 from fastapi import APIRouter , HTTPException , status
 from ..schema.product import Product  , ProductSchema
 from aredis_om import NotFoundError
+
+logger = logging.getLogger(__name__)
+logger_error = logging.getLogger('error_logger')
 
 product_router = APIRouter()
 
@@ -19,10 +23,14 @@ async def API_read_product(proID: str):
     Raises:
         HTTPException: If the product is not found (404 Not Found).
     """
+    logger.info(f"Received request to read product with ID: {proID}")
+
     try:
         product_info = await Product.get(proID)
+    
     except NotFoundError:
         raise HTTPException(detail="product NOT found", status_code=status.HTTP_404_NOT_FOUND)
+    
     return product_info
 
 
@@ -37,8 +45,17 @@ async def API_save_product(product: ProductSchema):
     Returns:
         dict: A success message and the newly created product ID.
     """
-    new_product = Product(**product.model_dump())
-    await new_product.save()
+    logger.info(f"Received request to create a new product: {product}")
+    
+    try:
+        new_product = Product(**product.model_dump())
+        await new_product.save()
+        logger.info(f"New product created successfully | Product ID: {new_product.pk}")
+
+    except Exception as e : 
+        logger_error.error(f"Error while creating product | Error: {e}")
+        return {"message": "Something went wrong while creating the product. Please try again!"}
+    
     return {"message":"product created successfully", "proID" :f"{new_product.pk}"}
 
 
@@ -59,13 +76,20 @@ async def API_update_product(product: ProductSchema , proID: str):
             - If the product is not found (404 Not Found).
             - If an error occurs during the update process (400 Bad Request).
     """
+    logger.info(f"Received request to update product with ID: {proID} | New data: {product}")
+    
     try: 
         product_info = await Product.get(proID)
         await product_info.update(**product.model_dump())
+        logger.info(f"product updated successfully | pk:{proID}")
+
     except NotFoundError:
         raise HTTPException(detail="product NOT found", status_code=status.HTTP_404_NOT_FOUND)
-    except Exception :
-        raise HTTPException(detail="the update process failed", status_code=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        logger_error.error(f"Error while updating product | Error: {e}")
+        raise HTTPException(detail="The update process failed", status_code=status.HTTP_400_BAD_REQUEST)
+    
     return {"message":"product updated successfully"}
 
 
@@ -83,9 +107,14 @@ async def API_delete_product(proID: str):
     Raises:
         HTTPException: If the product is not found (404 Not Found).
     """
+    logger.info(f"Received request to delete product with ID: {proID}")
+    
     try:
         product_info = await Product.get(proID)
         await product_info.delete(pk=proID)
+        logger.info(f"Product deleted successfully | Product ID: {proID}")
+
     except NotFoundError:
         raise HTTPException(detail="product NOT found", status_code=status.HTTP_404_NOT_FOUND)
+    
     return {"message":"product deleted successfully"}
