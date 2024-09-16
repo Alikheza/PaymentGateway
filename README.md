@@ -15,7 +15,7 @@ Upon product registration, users acquire full CRUD authority.
 
 Initiating a payment through the API triggers a background check for availability via a message broker. If confirmed, the order advances to payment processing. A bank-issued payment gateway code is obtained to securely request payment. To simplify the process, we've simulated the bank's payment portal steps with a brief delay. Users can monitor their purchase status using a separate payment API.
 
-![App Screenshot](https://via.placeholder.com/468x300?text=App+Screenshot+Here)
+![App diagram]()
 ## Tech Stack
 
 **Client:** *
