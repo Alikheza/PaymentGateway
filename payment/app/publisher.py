@@ -7,8 +7,7 @@ from .config import Evariable
 from aio_pika import Message, connect
 from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractIncomingMessage, AbstractQueue
 
-# Configure the logger
-logger = logging.getLogger("publisher_logger")  # You can set different levels here (INFO, WARNING, ERROR)
+logger = logging.getLogger("publisher_logger") 
 
 class Publisher:
 

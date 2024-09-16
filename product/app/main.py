@@ -37,7 +37,7 @@ async def check_database_is_up(app: FastAPI):
         asyncio.create_task(consumer())
         
         if not await redis.ping() :
-            raise ConnectionError("Unable to ping the Redis database!") # If Redis is reachable, continue with FastAPI app startup
+            raise ConnectionError("Unable to ping the Redis database!")
         
         else:
             yield # If Redis and RabbitMQ is reachable, continue with FastAPI app startup

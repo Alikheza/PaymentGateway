@@ -3,7 +3,7 @@ import json
 from aio_pika import Message, connect
 from aio_pika.abc import AbstractIncomingMessage
 from aredis_om import NotFoundError
-from product.schema.product import Product
+from ..schema.product import Product
 from .config import Evariable
 
 logger = logging.getLogger('consumer_logger')
@@ -12,8 +12,7 @@ logger_error = logging.getLogger('error_logger')
 
 async def connect_consumer() :
 
-    connection = await connect(f"amqp://{Evariable.RabbitMQ_user}:{Evariable.RabbitMQ_password}@{Evariable.RabbitMQ_host}:{Evariable.RabbitMQ_port}/")
-    # channel = await connection.channel()    
+    connection = await connect(f"amqp://{Evariable.RabbitMQ_user}:{Evariable.RabbitMQ_password}@{Evariable.RabbitMQ_host}:{Evariable.RabbitMQ_port}/")  
     return connection
 
 

@@ -1,7 +1,6 @@
 from pydantic import BaseModel , Field
 from aredis_om import HashModel 
 from datetime import datetime
-from typing import Optional
 
 
 class Order(BaseModel):
