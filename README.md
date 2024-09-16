@@ -48,10 +48,10 @@ Add Environment Variables: Create or update the .env file with the necessary env
     RabbitMQ_user 
     RabbitMQ_password 
 
-Deployment Options
+## Deployment Options
 
 
-Option 1: Deploy via Docker
+### Option 1: Deploy via Docker
 
 
 Build the Docker Image
@@ -62,7 +62,7 @@ Run the Docker Container
 
     docker run <image-name>
 
-Option 2: Deploy via Script
+### Option 2: Deploy via Script
 
 Create a Python Virtual Environment
     
